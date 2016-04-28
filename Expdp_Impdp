@@ -1,0 +1,4 @@
+/* EXEMPLO - PROCESSO DE EXPORT/IMPORT
+Primeiramente verificar o tamanho do owner ou de determinada tabela na base de produção para calcular todo o espaço que será necessário
+para o refresh.
+Deve-se calcular para área de TEMP e UNDO aproximadamente o tamanho total do owner ou tabela + 50GB.*/
