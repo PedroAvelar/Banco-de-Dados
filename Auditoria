@@ -1,0 +1,17 @@
+--Efetuar um select na tabela abaixo para ver os segments que utilizam a tablespace de auditoria.
+select * from dba_segments where tablespace_name = 'AUDIT_TES'
+
+--Exemplo de view que utiliza a tablespace acima.
+select * from sys.AUD$
+
+--Consulta que lista os as auditorias.
+select * from dba_audit_trail where username = 'USR_NAGIOS';
+select count(1) from dba_audit_trail where username = 'USR_NAGIOS'; --Para consultar o usuário que mais grava auditoria na base.
+
+--Verifica as auditorias ativas no banco, onde estiver setado com A/A.
+select * from dba_obj_audit_opts;
+
+--Query dinâmica para desativar auditoria na base.
+select 'NOAUDIT delete,insert,uodate,select on ' ||object_name|| ';'
+from dba_obj_audit_opts
+where owner = 'GESPLAN_PROD';
