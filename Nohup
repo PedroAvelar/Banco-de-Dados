@@ -1,4 +1,0 @@
-/* nohup é um comando do UNIX que permite executar um programa ou processo de uma forma "desconectada" da sessão atual. 
-   Ou seja, se o usuário fizer logout, o comando continuará a rodar em segundo plano(background).*/
-   
-   
