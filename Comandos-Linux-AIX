@@ -1,0 +1,4 @@
+--
+
+vi .bash_profile --> Verifica as variáveis de ambiente.
+cd $TNS_ADMIN    --> Acessa o diretório onde foi configurado o TNSNAMES.ora. 
