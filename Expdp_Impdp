@@ -11,10 +11,14 @@ and owner = 'ADM'
 group by owner,segment_name,tablespace_name;
 
 --Verificar o tamanho do owner que será exportado(Base Origem).
-select owner,sum(bytes/1024/1024)
+select owner,tablespace_name,sum(bytes/1024/1024)
 from dba_segments
 where owner = 'NOME_OWNER'
-group by owner;
+group by owner,tablespace_name;
+
+/*Verificar se a tablespace informada acima existe na base destino, caso contrário, efetuar o REMAP_TABLESPACE no comando de
+export ou criar a tablespace com o mesmo nome na base destino.*/
+create tablespace NOME_TBS datafile 'caminho/datafile_01.dbf' size tamanhom autoextent off;
 
 --Verificar qual o segmento de TEMP que o banco está utilizando(Base Destino).
 select * from v$tempseg_usage;
@@ -44,3 +48,83 @@ group by tablespace_name;
 select dbms_metadata.get_ddl('TABLESPACE','NOME_UNDO') from dual;
 create undo tablespace NOME_UNDO datafile 'caminho/undo_01.dbf' size tamanhom;
 alter system set undo_tablespace = NOME_UNDO;
+
+--Verificar quais são os índices para determinado owner
+select index_name
+from dba_indexes
+where owner = 'NOME_OWNER';
+
+--Verificar quais são os índices para determinada tabela
+select index_name
+from dba_indexes
+where table_name = 'NOME_TABELA'
+and owner = 'ADM';
+
+--Verificar o tamanho de cada um dos índices no banco de origem e somar para saber quanto de área será necessário na base de destino.
+select owner, segment_name, bytes/1024/1024
+from dba_segments
+where segment_name in ('NOME_SEGMENTO')
+and owner = 'NOME_OWNER';
+
+--Guardar o código de criação de índices caso não queiro exportá-los.
+select dbms_metadata.get_ddl(object_type => 'INDEX',name => 'NOME_IDX',schema => 'OWNER') from dual;
+
+--Verificar diretório virtual e analisar fisicamente na máquina se existe espaço suficiente.
+select * from dba_directories;
+
+--Comando de Export NORMAL(Base Origem).
+expdp 'userid="/ as sysdba"' directory=NOME_DIRETORIO dumpfile=NOME_DUMP.dmp logfile=NOME_LOG.log tables=owner.tabela schemas=owner exclude=statistics 
+
+--Comando de Export com Compression e Paralelismo(Base Origem).
+expdp 'userid="/ as sysdba"' directory=NOME_DIRETORIO dumpfile=NOME_DUMP_%U.dmp logfile=NOME_LOG.log parallel=10 compression=all tables=owner.tabela schemas=owner exclude=statistics
+
+--Truncar a tabela no ambiente destino e dropar os índices caso necessário.
+truncate table owner.tabela;
+drop index owner.NOME_IDX;
+ou
+Utilizar o script: limpa_tudo_owner.sql.
+
+/*Após transferir o arquivo de export para a máquina destino via FTP ou SCP, executar o comando de Import não esqueendo de verificar
+se existe espaço suficiente no diretório.*/
+
+--Comando de Import NORMAL(Base Destino).
+impdp 'userid="/ as sysdba"' directory=NOME_DIRETORIO dumpfile=NOME_DUMP.dmp logfile=NOME_LOG.log exclude=statistics
+
+--Comando de Import com Compression e Paralelismo(Base Destino) e excluindo índices(Serão criados posteriormente).
+--METADADOS PRIMEIRAMENTE(Estrutura).
+impdp 'userid="/ as sysdba"' directory=NOME_DIRETORIO dumpfile=NOME_DUMP_%U.dmp parallel=10 content=metadata_only logfile=NOME_LOG.log exclude=index,statistics
+
+--Desativar Constraints - Import com Compression
+select 'ALTER TABLE "' || owner ||'"."' || Table_name || '" Disable   CONSTRAINTS ' || Constraint_name || ';'  
+from dba_constraints
+where owner = 'OWNER'
+--and table_name = 'NOME_TABELA';
+
+--Ativar o Compress
+select 'alter table '|| owner || '.'  || Table_name || ' compress for oltp ;'
+from dba_tables
+where owner = 'OWNER'
+--and table_name = 'NOME_TABELA';
+
+--Verificar se o compression está ativado(O correto é não retornar nenhuma linha)
+select * from dba_tables where table_name = 'NOME_TABELA'and Compression <> 'ENABLED';
+
+--Após efetuar o import dos metadados(estrutura), importar os dados, no caso de um import com compression.
+--obs: Este exemplo não está importanto os índices
+impdp 'userid="/ as sysdba"' directory=NOME_DIRETORIO dumpfile=NOME_DUMP_%U.dmp parallel=10 content=data_only logfile=NOME_LOG.log exclude=index,statistics
+
+--Acompanhar o crescimento da tabela na base destino.
+select owner, segment_name ,sum(bytes/1024/1024/1024)
+from dba_segments
+where segment_name = 'NOME_SEGMENTO'
+and owner = 'NOME_OWNER'
+group by owner,segment_name;
+
+--Acompanhar a utilização da TEMP e da UNDO através dos scripts: uso_temp.sql e utilizacao_UNDO.sql.
+
+/*Após terminar o import, destruir as tablespaces e datafiles de UNDO e TEMP caso tenham sido criados e setar os parâmetros para
+o normal. Verificar o Log do import*/
+
+drop tablespace NOME_TBS including contents and datafiles;
+
+
