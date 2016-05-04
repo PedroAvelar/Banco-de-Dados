@@ -88,11 +88,11 @@ Utilizar o script: limpa_tudo_owner.sql.
 se existe espaço suficiente no diretório.*/
 
 --Comando de Import NORMAL(Base Destino).
-impdp 'userid="/ as sysdba"' directory=NOME_DIRETORIO dumpfile=NOME_DUMP.dmp logfile=NOME_LOG.log exclude=statistics
+impdp 'userid="/ as sysdba"' directory=NOME_DIRETORIO dumpfile=NOME_DUMP.dmp logfile=NOME_LOG.log exclude=statistics schemas=owner
 
 --Comando de Import com Compression e Paralelismo(Base Destino) e excluindo índices(Serão criados posteriormente).
 --METADADOS PRIMEIRAMENTE(Estrutura).
-impdp 'userid="/ as sysdba"' directory=NOME_DIRETORIO dumpfile=NOME_DUMP_%U.dmp parallel=10 content=metadata_only logfile=NOME_LOG.log exclude=index,statistics
+impdp 'userid="/ as sysdba"' directory=NOME_DIRETORIO dumpfile=NOME_DUMP_%U.dmp parallel=10 content=metadata_only logfile=NOME_LOG.log schemas=owner exclude=index,statistics
 
 --Desativar Constraints - Import com Compression
 select 'ALTER TABLE "' || owner ||'"."' || Table_name || '" Disable   CONSTRAINTS ' || Constraint_name || ';'  
