@@ -122,6 +122,19 @@ group by owner,segment_name;
 
 --Acompanhar a utilização da TEMP e da UNDO através dos scripts: uso_temp.sql e utilizacao_UNDO.sql.
 
+--Destravar estatisticas (com a compreenção de dados a estatísticas ficam bloqueadas)
+select 'exec dbms_stats.unlock_table_stats(' || chr(39) || owner ||
+      chr(39) || ',' || chr(39) || TABLE_NAME || chr(39) || ' );'
+ from dba_tab_statistics
+where stattype_locked is not null
+  and OWNER = 'APD';
+
+--Coletar Estatisticas
+execute dbms_stats.gather_schema_stats(ownname => 'APD',estimate_percent => 100,DEGREE => 10,cascade => TRUE);
+
+--Recompilar Objetos Invalidos
+exec UTL_RECOMP.RECOMP_SERIAL();
+
 /*Após terminar o import, destruir as tablespaces e datafiles de UNDO e TEMP caso tenham sido criados e setar os parâmetros para
 o normal. Verificar o Log do import*/
 
